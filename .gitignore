@@ -6,3 +6,4 @@ venv/
 catalog.db
 *.xlsx
 *.csv
+.vscode
