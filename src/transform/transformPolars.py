@@ -1,7 +1,7 @@
 import polars as pl
 import json
 import io
-from utils.getBronzeBucket import get_bronze_bucket, DateTuple
+from utils.getBronzeBucket import DateTuple
 import xlsxwriter
 import datetime
 

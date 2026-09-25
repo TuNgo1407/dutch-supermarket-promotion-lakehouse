@@ -3,7 +3,6 @@ import boto3
 from botocore.client import Config
 from botocore.client import ClientError
 from ingestion.getProdAPI import get_prod_by_cats
-from datetime import datetime
 import time
 from utils.getS3ObjectKey  import DateTuple,get_s3_object_key
 from utils import config
@@ -12,14 +11,8 @@ from utils.getTargetCats import get_target_cats
 
 
 
-def inject_weekly_bronze_to_bucket():
-    run_date = datetime.now()
-    
-    year = run_date.strftime("%Y")
-    month = run_date.strftime("%m")
-    week = run_date.strftime("%V") #week number
-    
-    dateTuple = DateTuple(year=year,month=month,week=week)
+def inject_to_bronze_bucket(dateTuple:DateTuple):
+
 
     s3 = boto3.client(
         "s3",
@@ -33,19 +26,21 @@ def inject_weekly_bronze_to_bucket():
     target_cats = get_target_cats()
     
     for cat in target_cats:
-        print(f"Fetching category: {cat}...")
-        raw_json_str = get_prod_by_cats(cat).encode("utf-8")
+        print(f"Fetching category: {cat}...")   
+        raw_json_str = get_prod_by_cats(cat)
 
         if not raw_json_str:
-            print(f"Skipping {cat} due to fetch error.")
+            print(f"[Ingest to Bronze] Skipping {cat} due to fetch error.")
             continue
+        
+        raw_bytes = raw_json_str.encode("utf-8")
 
         object_key = get_s3_object_key(dateTuple,cat)
 
         s3.put_object(
             Bucket=config.MINIO_BRONZE_BUCKET,
             Key=object_key,
-            Body=raw_json_str,
+            Body=raw_bytes,
             ContentType = "application/json"
         )
         

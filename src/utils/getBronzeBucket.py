@@ -1,5 +1,6 @@
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
 from utils.getS3ObjectKey import get_s3_object_key, DateTuple
 import json
 from utils import config
@@ -10,7 +11,6 @@ def get_bronze_bucket(dateTuple:DateTuple,cat:str):
 
     object_key = get_s3_object_key(dateTuple,cat)
     
-    
     s3 = boto3.client(
         "s3",
         endpoint_url=config.MINIO_ENDPOINT,
@@ -20,12 +20,19 @@ def get_bronze_bucket(dateTuple:DateTuple,cat:str):
         region_name= "us-east-1",
     )
     
-    res = s3.get_object(
-        Bucket=config.MINIO_BRONZE_BUCKET,
-        Key = object_key,
-    )
-    content = res["Body"].read().decode("utf-8")
-    data = json.loads(content)
-    return data
-
+    
+    try:
+        res = s3.get_object(
+            Bucket=config.MINIO_BRONZE_BUCKET,
+            Key = object_key,
+        )
+        content = res["Body"].read().decode("utf-8")
+        data = json.loads(content)
+        return data
+    except ClientError as e:
+        print(e.response['Error']['Code']) 
+        return None
+        
+        
+#https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
 

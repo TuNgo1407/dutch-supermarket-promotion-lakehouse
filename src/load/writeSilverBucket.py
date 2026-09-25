@@ -8,6 +8,11 @@ import pyarrow as pa
 from utils.getTargetCats import get_target_cats
 from datetime import datetime, timezone
 
+
+LAKEHOUSE_NAMESPACE = "silver"
+LAKEHOUSE_PROD_TABLE = f"{LAKEHOUSE_NAMESPACE}.products"
+
+
 def get_catalog():
     catalog =  SqlCatalog(
         "local_catalog",
@@ -27,24 +32,30 @@ def get_catalog():
 def get_prd_arrow_table(date_tuple:DateTuple, cat:str):
     data = get_bronze_bucket(dateTuple=date_tuple,cat=cat)
     arrow_table = transform(data)
-
     return arrow_table
     
     
-def write_to_silver_bucket(date_tuple:DateTuple, cat:str):
+def load_to_silver_bucket(date_tuple:DateTuple):
     catalog = get_catalog()
-    arrow_table = get_prd_arrow_table(date_tuple,cat)
+    catalog.create_namespace_if_not_exists(LAKEHOUSE_NAMESPACE)
+    prd_table = catalog.create_table_if_not_exists(LAKEHOUSE_PROD_TABLE,schema=arrow_table.schema)
     
-    is_overwrite = And(
-        EqualTo("category",cat),
-        EqualTo("ingested_week",int(date_tuple.week)),
-        EqualTo("ingested_year",int(date_tuple.year))
-    )
+    target_cats = get_target_cats()
     
-
-    catalog.create_namespace_if_not_exists("silver")
-    prd_table = catalog.create_table_if_not_exists("silver.products",schema=arrow_table.schema)
-    prd_table.overwrite(arrow_table,overwrite_filter=is_overwrite)
+    for cat in target_cats:
+        arrow_table = get_prd_arrow_table(date_tuple,cat)
+        
+        if not arrow_table:
+            print(f"[Loading to silver] Skipping {cat} due to fetch error.")
+            continue
+    
+        is_overwrite = And(
+            EqualTo("category",cat),
+            EqualTo("ingested_week",int(date_tuple.week)),
+            EqualTo("ingested_year",int(date_tuple.year))
+        )
+        
+        prd_table.overwrite(arrow_table,overwrite_filter=is_overwrite)
     
         
 
