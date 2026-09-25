@@ -1,0 +1,10 @@
+boto3==1.43.96
+botocore==1.43.96
+duckdb==1.5.5
+polars==1.44.2
+pyarrow==25.0.1
+pyiceberg==0.12.0
+python-dotenv==1.2.3
+Requests==2.34.2
+xlsxwriter==3.2.9
+sqlalchemy==2.0.50
