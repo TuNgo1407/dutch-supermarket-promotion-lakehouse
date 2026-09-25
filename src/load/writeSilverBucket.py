@@ -19,7 +19,7 @@ def get_catalog():
         **{
             "uri": "sqlite:///catalog.db",
             "warehouse":"s3://silver/",
-            "s3.endpoint": "http://localhost:9000",
+            "s3.endpoint": config.MINIO_ENDPOINT,
             "s3.access-key-id": config.MINIO_ACCESS_KEY,
             "s3.secret-access-key": config.MINIO_SECRET_KEY, 
             "s3.region": "us-east-1"
@@ -38,16 +38,27 @@ def get_prd_arrow_table(date_tuple:DateTuple, cat:str):
 def load_to_silver_bucket(date_tuple:DateTuple):
     catalog = get_catalog()
     catalog.create_namespace_if_not_exists(LAKEHOUSE_NAMESPACE)
-    prd_table = catalog.create_table_if_not_exists(LAKEHOUSE_PROD_TABLE,schema=arrow_table.schema)
+    
+    
+    if catalog.table_exists(LAKEHOUSE_PROD_TABLE):
+        prd_table = catalog.load_table(LAKEHOUSE_PROD_TABLE)
+    else:
+        prd_table = None
+        
     
     target_cats = get_target_cats()
     
     for cat in target_cats:
         arrow_table = get_prd_arrow_table(date_tuple,cat)
         
+        
         if not arrow_table:
             print(f"[Loading to silver] Skipping {cat} due to fetch error.")
             continue
+    
+    
+        if not prd_table:
+            prd_table = catalog.create_table(LAKEHOUSE_PROD_TABLE,schema=arrow_table.schema)
     
         is_overwrite = And(
             EqualTo("category",cat),
@@ -56,6 +67,7 @@ def load_to_silver_bucket(date_tuple:DateTuple):
         )
         
         prd_table.overwrite(arrow_table,overwrite_filter=is_overwrite)
+        print(f"Cat {cat} row written count: {arrow_table.num_rows}")
     
         
 

@@ -17,7 +17,7 @@ def connect_duckdb():
                 TYPE s3,
                 KEY_ID '{config.MINIO_ACCESS_KEY}',
                 SECRET '{config.MINIO_SECRET_KEY}',
-                ENDPOINT 'localhost:9000',
+                ENDPOINT '{config.MINIO_ENDPOINT_NO_PREFIX}',
                 URL_STYLE 'path',
                 USE_SSL false
             );
